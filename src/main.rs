@@ -106,6 +106,12 @@ async fn async_main() {
     futures::join!(f1, f2);
 }
 ///////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////
+// 静的変数
+// 変数の位置が固定で複数のスレッドから共通に参照することができる
+static COUNTER: u32 = 100;
+
 fn main() {
     println!("Hello, world!");
 
@@ -284,6 +290,37 @@ fn main() {
     bbaarr::bar_func();
 
     bar_func();
+
+    // 参照型
+    let a = 123;
+    let p = &a; // 123という値が格納された領域への参照をpに代入する
+    println!("{}", *p); // => 123
+
+    // refを使用
+    let b = 123;
+    let ref q = a;
+    println!("{}", *q);
+    // ミュータブルな参照を用いることで、参照先の値を変更することが可能
+    let mut c = 123; // ミュータブルな変数aを定義
+    let r = &mut c; // ミュータブルな参照pを定義
+    *r = 456; // 参照先の値を456に書き換える
+    println!("{}", c); // => 456
+
+    // 型エイリアス
+    // typeを用いて型に「型エイリアス」という別名をつけることができる。
+    type Meter = u32;
+    type Millimeter = u32;
+    let _meter: Meter = 12;
+    let m_meter: Millimeter = 12000;
+    println!("{} {}", _meter, m_meter);
+
+    // 型を調べる
+    let x = 123;
+    println!("{}", type_of(x));
+}
+
+fn type_of<T>(_: T) -> &'static str {
+    std::any::type_name::<T>()
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -326,3 +363,61 @@ enum Color {
     Blue,
     Yellow,
 }
+
+///////////////////////////////////////////////////////////////////////////
+/// 所有権
+/// Rustでは、ただひとつの変数がヒープ上のメモリの所有権を持ち、所有者がスコープから消えた時点でヒープ領域も解放される
+fn func1() {
+    let name = String::from("ABC"); // nameがStringの所有権を持つ
+    println!("{}", name);
+} // nameがスコープアウトしたので解放される
+
+fn func2() {
+    let name = String::from("DEF");
+    println!("{}", name);
+    func3(name); // ここで所有権がfunc3()のnameに移動してしまう
+
+    // println!("{}", name); // func2()終了時に解放済みの領域を参照しているのでエラー
+}
+
+fn func3(name: String) {
+    // func2()から所有権をもらう
+    println!("{}", name);
+} // この時点でヒープ領域が解放される
+
+fn func4() {
+    let mut name = String::from("GHI");
+    println!("{}", name);
+    name = func5(name); // 所有権を渡した後、返却してもらう
+    println!("{}", name); // func2()とは違い、所有権は返却されているのでエラーにはならない
+}
+
+fn func5(name: String) -> String {
+    println!("{}", name);
+    name // 所有権をfunc4()に返却する
+}
+
+// &で参照を渡すことで、所有権を渡さないまま関数を呼び出すこともできる（借用）
+fn func6() {
+    let name = String::from("JKL");
+    println!("{}", name);
+    func7(&name); // 参照のみを渡して所有権は渡さない
+    println!("{}", name); // 所有権が残っているので参照可能
+}
+
+fn func7(name: &String) {
+    // func6()から参照のみを借用する
+    println!("{}", name);
+} // 参照のみなのでヒープ領域は解放されない
+
+// 関数内で他の変数に渡しただけでも所有権の移動が発生します
+fn func8() {
+    let s1 = String::from("MNO");
+    {
+        let s2 = s1; // 所有権がs1からs2に移動
+        println!("{}", s2);
+    } // 所有者が居なくなるので解放される
+
+    // println!("{}", s1); // エラー
+}
+///////////////////////////////////////////////////////////////////////////
